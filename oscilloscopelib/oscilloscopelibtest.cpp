@@ -10,20 +10,23 @@ int main(void){
 
     oscilloscope.draw_point(20, 20, 2);
 
-    PaError error = oscilloscope.open_start(SAMPLE_RATE);
+    PaError error;
+    error = oscilloscope.open_start(SAMPLE_RATE);
     if(error != PaNoError)goto Error;
 
     terminal::out::println("audio started, press any key to stop.");
     terminal::in::get_ch();
 
-    oscilloscope.stop_close();
+    terminal::out::println("audio stream stopped.");
+    error = oscilloscope.stop_close();
+    if(error != PaNoError)goto Error;
 
-    return;
+    return 0;
 
     :Error
     Pa_Terminate();
-    fprintf( stderr, "An error occurred while using the portaudio stream\n" );
-    fprintf( stderr, "Error number: %d\n", err );
-    fprintf( stderr, "Error message: %s\n", Pa_GetErrorText( err ) );
-    return err;
+    terminal::out::println( "An error occurred while using the portaudio stream" );
+    terminal::out::println( "Error number: ", err );
+    terminal::out::println( "Error message: ", Pa_GetErrorText( err ) );
+    return error;
 }
