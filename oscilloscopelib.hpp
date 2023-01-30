@@ -35,21 +35,17 @@ class oscilloscopeLibrary {
 
 PaError oscilloscopeLibrary::open_start(unsigned int sample_rate){ //Initializes portAudio (if not already), opens a new stream with the requested settings and starts the playback
     PaError error_output; //Stores any errors occurred during the execution of the function
-    const unsigned int channels = 2; //Since the oscilloscope is gonna be in XY mode, we're only using two channels
+
+	const unsigned int channels = 2; //Since the oscilloscope is gonna be in XY mode, we're only using two channels
 
     error_output = Pa_Initialize(); //Initializing portAudio storing any errors caused during the process
     if(error_output != paNoError) return error_output; //If any error occured return it and end the function
     //If no error occurred continue executing the program
 
-    if(!initialized){
-                        error_output = Pa_Initialize();
-                        if(error_output != paNoError) return error_output;
-                    }
-
     error_output = Pa_OpenDefaultStream( //We're opening a default stream to save us the trouble of getting the default audio output device
         &oscilloscopeLibrary::audio_stream, //Audio stream defined in the class
         0, //In this library we're not using any input stream since we're not recording
-        channels, //Number of audio channels
+        oscilloscopeLibrary::channels, //Number of audio channels
         paFloat32, //Floating 32-bit for audio output
         sample_rate, //The playback sample rate, highering it makes the drawing of the image faster but less precise
         frames_per_buffer, //The number of frames which will be contained into the audio output buffer
@@ -59,18 +55,15 @@ PaError oscilloscopeLibrary::open_start(unsigned int sample_rate){ //Initializes
     if(error_output != paNoError) return error_output; //Checking for errors during initialization of the audio stream
 
     error_output = Pa_StartStream( oscilloscopeLibrary::audio_stream ); //Starting audio playback
-    if(error_output == paNoError)oscilloscopeLibrary::playing = true; //If the playback started with no errors set the "playing" boolean into the class as true
     return error_output; //Returns any error occured during Pa_StartStream, if there was no error the function will return paNoError
 }
 
 PaError oscilloscopeLibrary::stop_close(){ //Stops the playback of an already playing audio stream
-    PaError error_output; //Stores any errors occurred during the execution of the function
+	PaError error_output; //Stores any errors occurred during the execution of the function
 
-    if(oscilloscopeLibrary::playing){ //If an audio stream is playing
-        error_output = Pa_StopStream( oscilloscopeLibrary::audio_stream ); //Stopping the audio playback of the audio stream defined into the class
-        if(error_output != paNoError) return error_output; //If any error occurred during the stopping of the playback return the error
-        oscilloscopeLibrary::playing = false; //Set the "playing" boolean back to false state
-    }
+    error_output = Pa_StopStream( oscilloscopeLibrary::audio_stream ); //Stopping the audio playback of the audio stream defined into the class
+    if(error_output != paNoError) return error_output; //If any error occurred during the stopping of the playback return the error
+    oscilloscopeLibrary::playing = false; //Set the "playing" boolean back to false state
 
     //If no audio stream was playing close the stream anyway (if no stream was created in the first place then it will just return an error)
     error_output = Pa_CloseStream( oscilloscopeLibrary::audio_stream ); //Closing the audio stream
