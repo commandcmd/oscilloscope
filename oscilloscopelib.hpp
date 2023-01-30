@@ -31,7 +31,7 @@ class oscilloscopeLibrary {
         );
 
         extern unsigned int absolute(int input);
-};
+}; //oscilloscopeLibrary class
 
 PaError oscilloscopeLibrary::open_start(unsigned int sample_rate){ //Initializes portAudio (if not already), opens a new stream with the requested settings and starts the playback
     PaError error_output; //Stores any errors occurred during the execution of the function
@@ -56,7 +56,7 @@ PaError oscilloscopeLibrary::open_start(unsigned int sample_rate){ //Initializes
 
     error_output = Pa_StartStream( oscilloscopeLibrary::audio_stream ); //Starting audio playback
     return error_output; //Returns any error occured during Pa_StartStream, if there was no error the function will return paNoError
-}
+} //oscilloscopeLibrary::open_start
 
 PaError oscilloscopeLibrary::stop_close(){ //Stops the playback of an already playing audio stream
 	PaError error_output; //Stores any errors occurred during the execution of the function
@@ -68,34 +68,41 @@ PaError oscilloscopeLibrary::stop_close(){ //Stops the playback of an already pl
     //If no audio stream was playing close the stream anyway (if no stream was created in the first place then it will just return an error)
     error_output = Pa_CloseStream( oscilloscopeLibrary::audio_stream ); //Closing the audio stream
     return error_output; //Returns any error occured during Pa_StartStream, if there was no error the function will return paNoError
-}
+} //oscilloscopeLibrary::stop_close
 
 void oscilloscopeLibrary::updateBuffer(){
-    float bufferCopyLCH[buffer_frames];
+    float bufferCopyLCH[buffer_frames]; //Creating two temporary arrays to store the content of the buffer that's gonna be deleted
     float bufferCopyRCH[buffer_frames];
 
+	//Copying into the just-created arrays the contents of the buffer
     for(unsigned int i = 0; i <= buffer_size_old;i++){
         bufferCopyLCH[i] = *(oscilloscopeLibrary::preBuffer->left_channel + i);
         bufferCopyRCH[i] = *(oscilloscopeLibrary::preBuffer->right_channel + i);
     }
 
-	delete oscilloscopeLibrary::preBuffer->left_channel;
-	delete oscilloscopeLibrary::preBuffer->right_channel;
+	//Delete the buffer pointer arrays
+	delete oscilloscopeLibrary::preBuffer.left_channel;
+	delete oscilloscopeLibrary::preBuffer.right_channel;
 
-	oscilloscopeLibrary::preBuffer->left_channel = new float[buffer_frames];
-	oscilloscopeLibrary::preBuffer->right_channel = new float[buffer_frames];
+	//Create two new buffer pointer arrays and make them as big as the buffer_frames variable specifies
+	oscilloscopeLibrary::preBuffer.left_channel = new float[buffer_frames];
+	oscilloscopeLibrary::preBuffer.right_channel = new float[buffer_frames];
 
+	//Copy all the data into the new buffer
 	for(unsigned int i = 0;i <= buffer_frames;i++){
 		*(oscilloscopeLibrary::preBuffer->left_channel + i)  = bufferCopyLCH[i];
 		*(oscilloscopeLibrary::preBuffer->right_channel + i) = bufferCopyRCH[i];
 	}
 
+	//buffer_size_old is the prebuffer's size after the last resizing
 	buffer_size_old = buffer_frames;
 
-	return;
-}
+	return; //end the function
+} //oscilloscopeLibrary::updateBuffer
 
-void oscilloscopeLibrary::absolute(int input){return input >= 0 ? input : input *= -1;}
+void oscilloscopeLibrary::absolute(int input){ //This function is used only in the draw_line
+	return input >= 0 ? input : input *= -1; //Take the input and make it negative if it's not already
+} //oscilloscopeLibrary::absolute
 
 static int oscilloscopeLibrary::paCallBack(
     const void *inputBuffer,
@@ -115,14 +122,15 @@ static int oscilloscopeLibrary::paCallBack(
     }
 
     return 0; //We need to return an int since this function is defined to be an integer in portAudio
-}
+} //oscilloscopeLibrary::paCallBack
 
+//Draws a line on the screen
 void oscilloscopeLibrary::draw_line(unsigned int x1, unsigned int y1, unsigned int x2, unsigned int y2){
-    const bool FALL = false;
-    const bool RISE = true;
+    const bool FALL = false; //Used to define the direction variable
+    const bool RISE = true; //If the direction goes up then the definition is in RISE, otherwise in FALL
 
-    unsigned long iterator = 0;
-    unsigned int iX = x1;
+    unsigned long iterator = 0; //Iterator for the cycle that writes to the prebuffer
+    unsigned int iX = x1; 
     unsigned int iY = y1;
 
     unsigned int distanceToX2 = absolute(x2 - x1);
@@ -154,4 +162,4 @@ void oscilloscopeLibrary::draw_line(unsigned int x1, unsigned int y1, unsigned i
 
         iterator++;
     }
-}
+} //oscilloscopeLibrary::draw_line
