@@ -4,6 +4,7 @@
 class oscilloscopeLibrary {
     public:
         extern void draw_line(unsigned int x1, unsigned int y1, unsigned int x2, unsigned int y2);
+        extern void draw_point(unsigned int x, unsigned int y, unsigned short duration);
 
         PaError open_start(unsigned int sample_rate);
         PaError stop_close();
@@ -98,7 +99,6 @@ void oscilloscopeLibrary::updateBuffer(){
 
 	//buffer_size_old is the prebuffer's size after the last resizing
 	buffer_size_old = buffer_frames;
-    buffer_current_position = buffer_size_old;
 
 	return; //end the function
 } //oscilloscopeLibrary::updateBuffer
@@ -158,8 +158,8 @@ void oscilloscopeLibrary::draw_line(unsigned int x1, unsigned int y1, unsigned i
 		distanceRatio = distanceToX2 > distanceToY2 ? (int)(distanceToX2 / distanceToY2) : (int)(distanceToY2 / distanceToX2);
 
 		if(distanceToX2 > distanceToY2){
-			*(data->right_channel + iterator) = *(data->right_channel + iterator - 1) + ((directionX==RISE ? 1 : -1) * (1 / 100));
-			*(data->left_channel + iterator)  = *(data->left_channel + iterator - 1) + ((directionY==RISE ? 1 : -1) * (distanceRatio / 100));
+			*(data->right_channel + iterator) = *(data->right_channel + iterator - 1) + ((directionY==RISE ? 1 : -1) * (1 / 100));
+			*(data->left_channel + iterator)  = *(data->left_channel + iterator - 1) + ((directionX==RISE ? 1 : -1) * (distanceRatio / 100));
 		} else if(distanceToX2 < distanceToY2){
 			*(data->left_channel + iterator)  = *(data->left_channel + iterator - 1) + ((directionX==RISE ? 1 : -1) * (1 / 100));
 			*(data->right_channel + iterator) = *(data->right_channel + iterator - 1) + ((directionY==RISE ? 1 : -1) * (distanceRatio / 100));
@@ -168,6 +168,9 @@ void oscilloscopeLibrary::draw_line(unsigned int x1, unsigned int y1, unsigned i
 			*(data->right_channel + iterator) = *(data->right_channel + iterator - 1) + ((directionX==RISE ? 1 : -1) * (1 / 100));
 		}
 
+        iX = *(data->left_channel + iterator);
+        iY = *(data->right_channel + iterator);
+
 		iterator++;
 	}
 
@@ -175,3 +178,15 @@ void oscilloscopeLibrary::draw_line(unsigned int x1, unsigned int y1, unsigned i
 
     return;
 } //oscilloscopeLibrary::draw_line
+
+void oscilloscopeLibrary::draw_point(unsigned int x, unsigned int y, unsigned short duration){
+    oscilloscopeLibrary::buffer_frames += duration;
+    oscilloscopeLibrary::updateBuffer();
+
+    for(unsigned short i = buffer_current_position;i < duration + buffer_current_position;i++){
+        *(data->left_channel + i)  = *(data->left_channel + i - 1);
+        *(data->right_channel + i) = *(data->right_channel + i - 1);
+    }
+
+    return;
+}
