@@ -12,21 +12,21 @@ int main(void){
 
     PaError error;
     error = oscilloscope.open_start(SAMPLE_RATE);
-    if(error != PaNoError)goto Error;
+    if(error != paNoError)goto Error;
 
     terminal::out::println("audio started, press any key to stop.");
     terminal::in::get_ch();
 
     terminal::out::println("audio stream stopped.");
     error = oscilloscope.stop_close();
-    if(error != PaNoError)goto Error;
+    if(error != paNoError)goto Error;
 
     return 0;
 
-    :Error
+    Error:
     Pa_Terminate();
     terminal::out::println( "An error occurred while using the portaudio stream" );
-    terminal::out::println( "Error number: ", err );
-    terminal::out::println( "Error message: ", Pa_GetErrorText( err ) );
+    terminal::out::println( "Error number: ", error );
+    terminal::out::println( "Error message: ", Pa_GetErrorText( error ) );
     return error;
 }

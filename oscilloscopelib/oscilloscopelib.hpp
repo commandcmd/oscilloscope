@@ -3,8 +3,8 @@
 
 class oscilloscopeLibrary {
     public:
-        extern void draw_line(unsigned int x1, unsigned int y1, unsigned int x2, unsigned int y2);
-        extern void draw_point(unsigned int x, unsigned int y, unsigned short duration);
+        void draw_line(unsigned int x1, unsigned int y1, unsigned int x2, unsigned int y2);
+        void draw_point(unsigned int x, unsigned int y, unsigned short duration);
 
         PaError open_start(unsigned int sample_rate);
         PaError stop_close();
@@ -18,10 +18,10 @@ class oscilloscopeLibrary {
         typedef struct {
             float *left_channel;
             float *right_channel;
-        } prebuffer;
-        static prebuffer preBuffer;
+        } preBufData;
+        static preBufData _preBufData;
 
-        extern void updateBuffer();
+        void updateBuffer();
 
         PaStream *audio_stream;
         static int paCallBack(
@@ -33,7 +33,7 @@ class oscilloscopeLibrary {
             void *userData
         );
 
-        extern unsigned int absolute(int input);
+         unsigned int absolute(int input);
 }; //oscilloscopeLibrary class
 
 PaError oscilloscopeLibrary::open_start(unsigned int sample_rate){ //Initializes portAudio (if not already), opens a new stream with the requested settings and starts the playback
@@ -48,12 +48,12 @@ PaError oscilloscopeLibrary::open_start(unsigned int sample_rate){ //Initializes
     error_output = Pa_OpenDefaultStream( //We're opening a default stream to save us the trouble of getting the default audio output device
         &oscilloscopeLibrary::audio_stream, //Audio stream defined in the class
         0, //In this library we're not using any input stream since we're not recording
-        oscilloscopeLibrary::channels, //Number of audio channels
+        channels, //Number of audio channels
         paFloat32, //Floating 32-bit for audio output
         sample_rate, //The playback sample rate, highering it makes the drawing of the image faster but less precise
-        frames_per_buffer, //The number of frames which will be contained into the audio output buffer
+        buffer_frames, //The number of frames which will be contained into the audio output buffer
         oscilloscopeLibrary::paCallBack, //This is the callback function that portAudio will call everytime the audio is needed, we defined it in the library
-        &preBuffer //All audio data that will be passed to the callback function, this struct gets filled when the draw_line() function is called
+        &_preBufData //All audio data that will be passed to the callback function, this struct gets filled when the draw_line() function is called
     );
     if(error_output != paNoError) return error_output; //Checking for errors during initialization of the audio stream
 
@@ -66,7 +66,6 @@ PaError oscilloscopeLibrary::stop_close(){ //Stops the playback of an already pl
 
     error_output = Pa_StopStream( oscilloscopeLibrary::audio_stream ); //Stopping the audio playback of the audio stream defined into the class
     if(error_output != paNoError) return error_output; //If any error occurred during the stopping of the playback return the error
-    oscilloscopeLibrary::playing = false; //Set the "playing" boolean back to false state
 
     //If no audio stream was playing close the stream anyway (if no stream was created in the first place then it will just return an error)
     error_output = Pa_CloseStream( oscilloscopeLibrary::audio_stream ); //Closing the audio stream
@@ -79,22 +78,22 @@ void oscilloscopeLibrary::updateBuffer(){
 
 	//Copying into the just-created arrays the contents of the buffer
     for(unsigned int i = 0; i < buffer_size_old;i++){
-        bufferCopyLCH[i] = *(oscilloscopeLibrary::preBuffer->left_channel + i);
-        bufferCopyRCH[i] = *(oscilloscopeLibrary::preBuffer->right_channel + i);
+        bufferCopyLCH[i] = *(oscilloscopeLibrary::_preBufData.left_channel + i);
+        bufferCopyRCH[i] = *(oscilloscopeLibrary::_preBufData.right_channel + i);
     }
 
 	//Delete the buffer pointer arrays
-	delete oscilloscopeLibrary::preBuffer.left_channel;
-	delete oscilloscopeLibrary::preBuffer.right_channel;
+	delete oscilloscopeLibrary::_preBufData.left_channel;
+	delete oscilloscopeLibrary::_preBufData.right_channel;
 
 	//Create two new buffer pointer arrays and make them as big as the buffer_frames variable specifies
-	oscilloscopeLibrary::preBuffer.left_channel = new float[buffer_frames];
-	oscilloscopeLibrary::preBuffer.right_channel = new float[buffer_frames];
+	oscilloscopeLibrary::_preBufData.left_channel = new float[buffer_frames];
+	oscilloscopeLibrary::_preBufData.right_channel = new float[buffer_frames];
 
 	//Copy all the data into the new buffer
 	for(unsigned int i = 0;i < buffer_frames;i++){
-		*(oscilloscopeLibrary::preBuffer->left_channel + i)  = bufferCopyLCH[i];
-		*(oscilloscopeLibrary::preBuffer->right_channel + i) = bufferCopyRCH[i];
+		*(oscilloscopeLibrary::_preBufData.left_channel + i)  = bufferCopyLCH[i];
+		*(oscilloscopeLibrary::_preBufData.right_channel + i) = bufferCopyRCH[i];
 	}
 
 	//buffer_size_old is the prebuffer's size after the last resizing
@@ -103,7 +102,7 @@ void oscilloscopeLibrary::updateBuffer(){
 	return; //end the function
 } //oscilloscopeLibrary::updateBuffer
 
-void oscilloscopeLibrary::absolute(int input){ //This function is used only in the draw_line
+unsigned int oscilloscopeLibrary::absolute(int input){ //This function is used only in the draw_line
 	return input >= 0 ? input : input *= -1; //Take the input and make it negative if it's not already
 } //oscilloscopeLibrary::absolute
 
@@ -113,15 +112,15 @@ static int oscilloscopeLibrary::paCallBack(
     unsigned long framesPerBuffer,
     const PaStreamCallbackTimeInfo* timeInfo,
     PaStreamCallbackFlags flags,
-    void *userData
-) {
+    void *userData)
+{
     (void) inputBuffer; //Calling the inputbuffer like this so we don't get any unused variable warnings
     float *output = (float*)outputBuffer; //Casting outputBuffer from void to float pointer then storing it in *output
-    paTestData *data = (paTestData*)userData; //Casting the userData from void to paTestData to store it into the *data pointer
+    _preBufData *data = (_preBufData*)userData; //Casting the userData from void to paTestData to store it into the *data pointer
 
-    for(unsigned int i = 0; i < oscilloscopeLibrary::frames_per_buffer;i++){ //Passing all the data contained into the struct to the outputBuffer of portAudio
-        *output++ = *(data->left_channel + i);
-        *output++ = *(data->right_channel + i);
+    for(unsigned int i = 0; i < buffer_frames; i++){ //Passing all the data contained into the struct to the outputBuffer of portAudio
+        *output++ = *(_preBufData->left_channel + i);
+        *output++ = *(_preBufData->right_channel + i);
     }
 
     return 0; //We need to return an int since this function is defined to be an integer in portAudio
@@ -158,18 +157,18 @@ void oscilloscopeLibrary::draw_line(unsigned int x1, unsigned int y1, unsigned i
 		distanceRatio = distanceToX2 > distanceToY2 ? (int)(distanceToX2 / distanceToY2) : (int)(distanceToY2 / distanceToX2);
 
 		if(distanceToX2 > distanceToY2){
-			*(data->right_channel + iterator) = *(data->right_channel + iterator - 1) + ((directionY==RISE ? 1 : -1) * (1 / 100));
-			*(data->left_channel + iterator)  = *(data->left_channel + iterator - 1) + ((directionX==RISE ? 1 : -1) * (distanceRatio / 100));
+			*(_preBufData.right_channel + iterator) = *(_preBufData.right_channel + iterator - 1) + ((directionY==RISE ? 1 : -1) * (1 / 100));
+			*(_preBufData.left_channel + iterator)  = *(_preBufData.left_channel + iterator - 1) + ((directionX==RISE ? 1 : -1) * (distanceRatio / 100));
 		} else if(distanceToX2 < distanceToY2){
-			*(data->left_channel + iterator)  = *(data->left_channel + iterator - 1) + ((directionX==RISE ? 1 : -1) * (1 / 100));
-			*(data->right_channel + iterator) = *(data->right_channel + iterator - 1) + ((directionY==RISE ? 1 : -1) * (distanceRatio / 100));
+			*(_preBufData.left_channel + iterator)  = *(_preBufData.left_channel + iterator - 1) + ((directionX==RISE ? 1 : -1) * (1 / 100));
+			*(_preBufData.right_channel + iterator) = *(_preBufData.right_channel + iterator - 1) + ((directionY==RISE ? 1 : -1) * (distanceRatio / 100));
 		} else if(distanceToX2 == distanceToY2){
-			*(data->left_channel + iterator)  = *(data->left_channel + iterator - 1) + ((directionX==RISE ? 1 : -1) * (1 / 100));
-			*(data->right_channel + iterator) = *(data->right_channel + iterator - 1) + ((directionX==RISE ? 1 : -1) * (1 / 100));
+			*(_preBufData.left_channel + iterator)  = *(_preBufData.left_channel + iterator - 1) + ((directionX==RISE ? 1 : -1) * (1 / 100));
+			*(_preBufData.right_channel + iterator) = *(_preBufData.right_channel + iterator - 1) + ((directionX==RISE ? 1 : -1) * (1 / 100));
 		}
 
-        iX = *(data->left_channel + iterator);
-        iY = *(data->right_channel + iterator);
+        iX = *(_preBufData.left_channel + iterator);
+        iY = *(_preBufData.right_channel + iterator);
 
 		iterator++;
 	}
@@ -184,8 +183,8 @@ void oscilloscopeLibrary::draw_point(unsigned int x, unsigned int y, unsigned sh
     oscilloscopeLibrary::updateBuffer();
 
     for(unsigned short i = buffer_current_position;i < duration + buffer_current_position;i++){
-        *(data->left_channel + i)  = *(data->left_channel + i - 1);
-        *(data->right_channel + i) = *(data->right_channel + i - 1);
+        *(_preBufData.left_channel + i)  = *(_preBufData.left_channel + i - 1);
+        *(_preBufData.right_channel + i) = *(_preBufData.right_channel + i - 1);
     }
 
     return;
