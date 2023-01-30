@@ -12,6 +12,8 @@ class oscilloscopeLibrary {
         unsigned int buffer_frames = 1;
 		unsigned int buffer_size_old = 1;
 
+		unsigned int buffer_current_position = 0;
+
         typedef struct {
             float *left_channel;
             float *right_channel;
@@ -72,10 +74,10 @@ PaError oscilloscopeLibrary::stop_close(){ //Stops the playback of an already pl
 
 void oscilloscopeLibrary::updateBuffer(){
     float bufferCopyLCH[buffer_frames]; //Creating two temporary arrays to store the content of the buffer that's gonna be deleted
-    float bufferCopyRCH[buffer_frames];
+    float bufferCopyRCH[buffer_frames]; //These are respectively the copy of the left channel and the copy of the right one
 
 	//Copying into the just-created arrays the contents of the buffer
-    for(unsigned int i = 0; i <= buffer_size_old;i++){
+    for(unsigned int i = 0; i < buffer_size_old;i++){
         bufferCopyLCH[i] = *(oscilloscopeLibrary::preBuffer->left_channel + i);
         bufferCopyRCH[i] = *(oscilloscopeLibrary::preBuffer->right_channel + i);
     }
@@ -89,13 +91,14 @@ void oscilloscopeLibrary::updateBuffer(){
 	oscilloscopeLibrary::preBuffer.right_channel = new float[buffer_frames];
 
 	//Copy all the data into the new buffer
-	for(unsigned int i = 0;i <= buffer_frames;i++){
+	for(unsigned int i = 0;i < buffer_frames;i++){
 		*(oscilloscopeLibrary::preBuffer->left_channel + i)  = bufferCopyLCH[i];
 		*(oscilloscopeLibrary::preBuffer->right_channel + i) = bufferCopyRCH[i];
 	}
 
 	//buffer_size_old is the prebuffer's size after the last resizing
 	buffer_size_old = buffer_frames;
+    buffer_current_position = buffer_size_old;
 
 	return; //end the function
 } //oscilloscopeLibrary::updateBuffer
@@ -126,40 +129,49 @@ static int oscilloscopeLibrary::paCallBack(
 
 //Draws a line on the screen
 void oscilloscopeLibrary::draw_line(unsigned int x1, unsigned int y1, unsigned int x2, unsigned int y2){
-    const bool FALL = false; //Used to define the direction variable
-    const bool RISE = true; //If the direction goes up then the definition is in RISE, otherwise in FALL
+	const bool FALL = false; //Used to define the direction variable
+	const bool RISE = true; //If the direction goes up then the definition is in RISE, otherwise in FALL
 
-    unsigned long iterator = 0; //Iterator for the cycle that writes to the prebuffer
-    unsigned int iX = x1; 
-    unsigned int iY = y1;
+	unsigned long iterator = buffer_current_position; //Iterator for the cycle that writes to the prebuffer
+	unsigned int iX = x1; //Iterator for the X coord
+	unsigned int iY = y1; //Iterator for the Y coord
 
-    unsigned int distanceToX2 = absolute(x2 - x1);
-    unsigned int distanceToY2 = absolute(y2 - y1);
-    signed int distanceRatio;
+	unsigned int distanceToX2 = absolute(x2 - x1); //the distance from the current value to the end value
+	unsigned int distanceToY2 = absolute(y2 - y1); //Right now it's set as the distance between the first variable and the second one to calculate how much should the buffer be incremented
 
-    //Using the pythagorian theorem to calculate how long will the buffer need to be in order to draw the line
-    oscilloscopeLibrary::buffer_frames += sqrt((double)pow((double)distanceToX2, 2) + pow((double)distanceToY2, 2)) + 1;
-	oscilloscopeLibrary::updateBuffer();
+	signed int distanceRatio; //the ratio between distanceToX2 and distanceToY2
 
-    bool directionX = (x2 - x1) >= 0;
-    bool directionY = (y2 - y1) >= 0;
+ 	//Using the pythagorian theorem to calculate how long will the buffer need to be in order to draw the line
+	oscilloscopeLibrary::buffer_frames += sqrt((double)pow((double)distanceToX2, 2) + pow((double)distanceToY2, 2)) + 1;
+	oscilloscopeLibrary::updateBuffer(); //Update the buffer to the calculated size
 
-    while(iX < x2 && iY < y2){
-        distanceToX2 = absolute(iX - x1);
-        distanceToY2 = absolute(iY - y1);
+	bool directionX = (x2 - x1) >= 0; //The direction in which the channels have to go at (RISE = true, FALL = false)
+	bool directionY = (y2 - y1) >= 0;
 
-        distanceRatio = distanceToX2 > distanceToY2 ? (int)(distanceToX2 / distanceToY2) : (int)(distanceToY2 / distanceToX2);
+	while(iX < x2 && iY < y2){
+        //Recalculate both distances every loop
+		distanceToX2 = absolute(iX - x1);
+		distanceToY2 = absolute(iY - y1);
 
-        if(distanceToX2 > distanceToY2){
-            data->right_channel[iterator] = data->right_channel[iterator - 1] + (1 / 100);
-            data->left_channel[iterator] = data->left_channel[iterator - 1] + (distanceRatio / 100);
-        } else if(distanceToX2 < distanceToY2){
-            data->left_channel[iterator] = data->left_channel[iterator - 1] + (1 / 100);
-            data->right_channel[iterator] = data->right_channel[iterator - 1] + (distanceRatio / 100);
-        } else if(distanceToX2 == distanceToY2){
-            data->left_channel[iterator] = 
-        }
+        //Recalculate the distanceRatio every loop
+        //This is the ratio between the distance from the biggest variable to the end and the smallest variable to the end
+		distanceRatio = distanceToX2 > distanceToY2 ? (int)(distanceToX2 / distanceToY2) : (int)(distanceToY2 / distanceToX2);
 
-        iterator++;
-    }
+		if(distanceToX2 > distanceToY2){
+			*(data->right_channel + iterator) = *(data->right_channel + iterator - 1) + ((directionX==RISE ? 1 : -1) * (1 / 100));
+			*(data->left_channel + iterator)  = *(data->left_channel + iterator - 1) + ((directionY==RISE ? 1 : -1) * (distanceRatio / 100));
+		} else if(distanceToX2 < distanceToY2){
+			*(data->left_channel + iterator)  = *(data->left_channel + iterator - 1) + ((directionX==RISE ? 1 : -1) * (1 / 100));
+			*(data->right_channel + iterator) = *(data->right_channel + iterator - 1) + ((directionY==RISE ? 1 : -1) * (distanceRatio / 100));
+		} else if(distanceToX2 == distanceToY2){
+			*(data->left_channel + iterator)  = *(data->left_channel + iterator - 1) + ((directionX==RISE ? 1 : -1) * (1 / 100));
+			*(data->right_channel + iterator) = *(data->right_channel + iterator - 1) + ((directionX==RISE ? 1 : -1) * (1 / 100));
+		}
+
+		iterator++;
+	}
+
+    buffer_current_position = iterator;
+
+    return;
 } //oscilloscopeLibrary::draw_line
