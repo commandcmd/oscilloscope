@@ -1,5 +1,4 @@
 #include "oscilloscopelib.hpp"
-#include "customTerminalIO.hpp"
 
 #define SAMPLE_RATE (160000)
 
@@ -8,7 +7,7 @@ oscilloscopeLibrary oscilloscope;
 int main(void){
     terminal::out::println("Starting portaudio...");
 
-    oscilloscope.draw_line(20, 12, 100, 190);
+    oscilloscope.draw_line(20, 12, 90, 190);
 
     PaError error;
     error = oscilloscope.open_start(SAMPLE_RATE);

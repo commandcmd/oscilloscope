@@ -1,4 +1,5 @@
 #include "portaudio.h"
+#include "customTerminalIO.hpp"
 #include <cmath>
 
 #define DEFAULT_SAMPLE_RATE (44100)
@@ -24,7 +25,7 @@ class oscilloscopeLibrary {
         bool buffer_initialised;
 
 		unsigned int buffer_size_old = 1;
-		unsigned int buffer_current_position = 0;
+		unsigned int buffer_current_position = 1;
 
         void updateBuffer();
 
@@ -100,6 +101,8 @@ void oscilloscopeLibrary::updateBuffer(){
     if(initialised)return; //Prevent this code to run if an audio stream is playing, the buffer shouldn't be edited and resized during audio stream playback
 
     if(!buffer_initialised){ //If the buffer hasn't been defined yet define it, tell the program we defined it and end the function.
+        terminal::out::println("creating new pointer with size ", preBufData.buffer_frames);
+
         preBufData.left_channel  = new float[preBufData.buffer_frames];
         preBufData.right_channel = new float[preBufData.buffer_frames];
 
@@ -107,6 +110,8 @@ void oscilloscopeLibrary::updateBuffer(){
 
         return;
     }
+
+    terminal::out::println("executing the rest of the stuff");
 
     float bufferCopyLCH[preBufData.buffer_frames]; //Creating two temporary arrays to store the content of the buffer that's gonna be deleted
     float bufferCopyRCH[preBufData.buffer_frames]; //These are respectively the copy of the left channel and the copy of the right one
@@ -146,7 +151,7 @@ void oscilloscopeLibrary::draw_line(unsigned int x1, unsigned int y1, unsigned i
     if(initialised)return; //Prevent the buffer to be modified while the audio stream is running
 
 	const bool FALL = false; //Used to define the direction variable
-	const bool RISE = true; //If the direction goes up then the definition is in RISE, otherwise in FALL
+	const bool RISE = true;  //If the direction goes up then the definition is in RISE, otherwise in FALL
 
 	unsigned int distanceToX2 = absolute(x2 - x1); //the distance from the current value to the end value
 	unsigned int distanceToY2 = absolute(y2 - y1); //Right now it's set as the distance between the first variable and the second one to calculate how much should the buffer be incremented
@@ -158,34 +163,49 @@ void oscilloscopeLibrary::draw_line(unsigned int x1, unsigned int y1, unsigned i
 	updateBuffer(); //Update the buffer to the calculated size
 
 	unsigned long iterator = buffer_current_position; //Iterator for the cycle that writes to the prebuffer
-	unsigned int iX = x1; //Iterator for the X coord
-	unsigned int iY = y1; //Iterator for the Y coord
+	float iX = x1; //Iterator for the X coord
+	float iY = y1; //Iterator for the Y coord
 
 	bool directionX = (x2 - x1) >= 0; //The direction in which the channels have to go at (RISE = true, FALL = false)
 	bool directionY = (y2 - y1) >= 0;
 
+    terminal::out::println("buffer_frames = ", preBufData.buffer_frames);
+    terminal::out::println("buffer_current_position = ", buffer_current_position);
+    terminal::out::println("directionX = ", directionX, " - directionY = ", directionY, ENDLINE, ENDLINE);
+
+    *(preBufData.left_channel)  = x1; //Setting the first value of the buffer to the initial variables
+    *(preBufData.right_channel) = y1; //Not doing this results in the entire buffer being empty since every value of the buffer is dependant on the last one
+
 	while(iX < x2 && iY < y2){
         //Recalculate both distances every loop
-		distanceToX2 = absolute(iX - x1);
-		distanceToY2 = absolute(iY - y1);
+		distanceToX2 = absolute(x2 - iX);
+		distanceToY2 = absolute(y2 - iY);
 
         //Recalculate the distanceRatio every loop
         //This is the ratio between the distance from the biggest variable to the end and the smallest variable to the end
 		distanceRatio = distanceToX2 > distanceToY2 ? (int)(distanceToX2 / distanceToY2) : (int)(distanceToY2 / distanceToX2);
 
+        terminal::out::println("distanceToX2 = ", distanceToX2, " - distanceToY2 = ", distanceToY2, " - distanceRatio = ", distanceRatio);
+
 		if(distanceToX2 > distanceToY2){
-			*(preBufData.right_channel + iterator) = *(preBufData.right_channel + iterator - 1) + ((directionY==RISE ? 1 : -1) * (1 / 100));
-			*(preBufData.left_channel + iterator)  = *(preBufData.left_channel + iterator - 1) + ((directionX==RISE ? 1 : -1) * (distanceRatio / 100));
+			*(preBufData.left_channel + iterator)  = *(preBufData.left_channel + iterator - 1)  + ((directionX==RISE ? 1 : -1) * (distanceRatio / 100.00f));
+			*(preBufData.right_channel + iterator) = *(preBufData.right_channel + iterator - 1) + ((directionY==RISE ? 1 : -1) * 0.01f);
 		} else if(distanceToX2 < distanceToY2){
-			*(preBufData.left_channel + iterator)  = *(preBufData.left_channel + iterator - 1) + ((directionX==RISE ? 1 : -1) * (1 / 100));
-			*(preBufData.right_channel + iterator) = *(preBufData.right_channel + iterator - 1) + ((directionY==RISE ? 1 : -1) * (distanceRatio / 100));
+			*(preBufData.left_channel + iterator)  = *(preBufData.left_channel + iterator - 1)  + ((directionX==RISE ? 1 : -1) * 0.01f);
+			*(preBufData.right_channel + iterator) = *(preBufData.right_channel + iterator - 1) + ((directionY==RISE ? 1 : -1) * (distanceRatio / 100.00f));
 		} else if(distanceToX2 == distanceToY2){
-			*(preBufData.left_channel + iterator)  = *(preBufData.left_channel + iterator - 1) + ((directionX==RISE ? 1 : -1) * (1 / 100));
-			*(preBufData.right_channel + iterator) = *(preBufData.right_channel + iterator - 1) + ((directionX==RISE ? 1 : -1) * (1 / 100));
+			*(preBufData.left_channel + iterator)  = *(preBufData.left_channel + iterator - 1)  + ((directionX==RISE ? 1 : -1) * 0.01f);
+			*(preBufData.right_channel + iterator) = *(preBufData.right_channel + iterator - 1) + ((directionY==RISE ? 1 : -1) * 0.01f);
 		}
+
+        terminal::out::println("writing to buffer in position ", iterator, " - left_channel = ", *(preBufData.left_channel + iterator), " - right_channel = ", *(preBufData.right_channel + iterator));
 
         iX = *(preBufData.left_channel + iterator);
         iY = *(preBufData.right_channel + iterator);
+
+        terminal::out::println("iX = ", iX, " - iY = ", iY);
+        terminal::out::println("iterator = ", iterator);
+        terminal::out::println(ENDLINE);
 
 		iterator++;
 	}
