@@ -8,7 +8,7 @@ oscilloscopeLibrary oscilloscope;
 int main(void){
     terminal::out::println("Starting portaudio...");
 
-    oscilloscope.draw_point(20, 20, 2);
+    oscilloscope.draw_line(20, 12, 100, 190);
 
     PaError error;
     error = oscilloscope.open_start(SAMPLE_RATE);

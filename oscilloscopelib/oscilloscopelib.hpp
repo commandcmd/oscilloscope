@@ -1,7 +1,7 @@
 #include "portaudio.h"
 #include <cmath>
 
-#define DEFAULT_SAMPLE_RATE (88200)
+#define DEFAULT_SAMPLE_RATE (44100)
 
 typedef struct {
     float *left_channel;
@@ -16,7 +16,7 @@ class oscilloscopeLibrary {
         void draw_line(unsigned int x1, unsigned int y1, unsigned int x2, unsigned int y2);
         void draw_point(unsigned int x, unsigned int y, unsigned short duration);
 
-        PaError open_start(unsigned int sample_rate);
+        PaError open_start(unsigned int sample_rate = DEFAULT_SAMPLE_RATE);
         PaError stop_close();
 
     private:
@@ -58,7 +58,6 @@ PaError oscilloscopeLibrary::open_start(unsigned int sample_rate){ //Initializes
     PaError error_output; //Stores any errors occurred during the execution of the function
 
 	const unsigned int channels = 2; //Since the oscilloscope is gonna be in XY mode, we're only using two channels
-    if(sample_rate == 0)sample_rate = DEFAULT_SAMPLE_RATE;
 
     error_output = Pa_Initialize(); //Initializing portAudio storing any errors caused during the process
     if(error_output != paNoError) return error_output; //If any error occured return it and end the function
@@ -149,10 +148,6 @@ void oscilloscopeLibrary::draw_line(unsigned int x1, unsigned int y1, unsigned i
 	const bool FALL = false; //Used to define the direction variable
 	const bool RISE = true; //If the direction goes up then the definition is in RISE, otherwise in FALL
 
-	unsigned long iterator = buffer_current_position; //Iterator for the cycle that writes to the prebuffer
-	unsigned int iX = x1; //Iterator for the X coord
-	unsigned int iY = y1; //Iterator for the Y coord
-
 	unsigned int distanceToX2 = absolute(x2 - x1); //the distance from the current value to the end value
 	unsigned int distanceToY2 = absolute(y2 - y1); //Right now it's set as the distance between the first variable and the second one to calculate how much should the buffer be incremented
 
@@ -161,6 +156,10 @@ void oscilloscopeLibrary::draw_line(unsigned int x1, unsigned int y1, unsigned i
  	//Using the pythagorian theorem to calculate how long will the buffer need to be in order to draw the line
 	preBufData.buffer_frames += sqrt((double)pow((double)distanceToX2, 2) + pow((double)distanceToY2, 2)) + 1;
 	updateBuffer(); //Update the buffer to the calculated size
+
+	unsigned long iterator = buffer_current_position; //Iterator for the cycle that writes to the prebuffer
+	unsigned int iX = x1; //Iterator for the X coord
+	unsigned int iY = y1; //Iterator for the Y coord
 
 	bool directionX = (x2 - x1) >= 0; //The direction in which the channels have to go at (RISE = true, FALL = false)
 	bool directionY = (y2 - y1) >= 0;
@@ -196,6 +195,7 @@ void oscilloscopeLibrary::draw_line(unsigned int x1, unsigned int y1, unsigned i
     return;
 } //oscilloscopeLibrary::draw_line
 
+//Draws a dot for the screen and keeps the vectorscope on that dot for a certain duration
 void oscilloscopeLibrary::draw_point(unsigned int x, unsigned int y, unsigned short duration){
     if(initialised)return; //Prevent the buffer to be modified while the audio stream is running
 
