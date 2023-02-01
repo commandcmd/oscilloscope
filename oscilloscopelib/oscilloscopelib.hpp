@@ -1,3 +1,6 @@
+#ifndef OSCLIB_HPP
+#define OSCLIB_HPP
+
 #include "portaudio.h"
 #include "customTerminalIO.hpp"
 #include <cmath>
@@ -27,8 +30,8 @@ class oscilloscopeLibrary {
         PaError stop_close();
 
     private:
-        bool initialised;
-        bool buffer_initialised;
+        bool initialised = false;
+        bool buffer_initialised = false;
 
 		unsigned int buffer_size_old = 1;
 		unsigned int buffer_current_position = 1;
@@ -241,3 +244,5 @@ osclib_err oscilloscopeLibrary::draw_point(unsigned int x, unsigned int y, unsig
 
     return osc_no_err;
 } //oscilloscopeLibrary::draw_point
+
+#endif
