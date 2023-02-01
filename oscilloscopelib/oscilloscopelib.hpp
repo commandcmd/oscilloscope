@@ -12,10 +12,16 @@ typedef struct {
 } paData;
 static paData preBufData;
 
+enum osclib_err { //define an enumerator for the errors that can happen during the code
+    osc_no_err = 1;
+
+    audio_stream_ill_modif = 100;
+}
+
 class oscilloscopeLibrary {
     public:
-        void draw_line(unsigned int x1, unsigned int y1, unsigned int x2, unsigned int y2);
-        void draw_point(unsigned int x, unsigned int y, unsigned short duration);
+        osclib_err draw_line(unsigned int x1, unsigned int y1, unsigned int x2, unsigned int y2);
+        osclib_err draw_point(unsigned int x, unsigned int y, unsigned short duration);
 
         PaError open_start(unsigned int sample_rate = DEFAULT_SAMPLE_RATE);
         PaError stop_close();
@@ -27,7 +33,7 @@ class oscilloscopeLibrary {
 		unsigned int buffer_size_old = 1;
 		unsigned int buffer_current_position = 1;
 
-        void updateBuffer();
+        osclib_err updateBuffer();
 
         PaStream *audio_stream;
         static int paCallBack(
@@ -54,7 +60,7 @@ class oscilloscopeLibrary {
 }; //oscilloscopeLibrary class
 
 PaError oscilloscopeLibrary::open_start(unsigned int sample_rate){ //Initializes portAudio (if not already), opens a new stream with the requested settings and starts the playback
-    if(initialised)return 0; //Prevent the code to run if an audio stream is already initialised
+    if(initialised)return paStreamIsNotStopped; //Prevent the code to run if an audio stream is already initialised and if it is return the error enumeration paStreamIsNotStopped to inform the user
 
     PaError error_output; //Stores any errors occurred during the execution of the function
 
@@ -77,12 +83,12 @@ PaError oscilloscopeLibrary::open_start(unsigned int sample_rate){ //Initializes
     if(error_output != paNoError) return error_output; //Checking for errors during initialization of the audio stream
 
     error_output = Pa_StartStream( oscilloscopeLibrary::audio_stream ); //Starting audio playback
-    if(error_output == paNoError)initialised = true;
+    if(error_output == paNoError)initialised = true; //If there were no errors then set the boolean "initialised" as true
     return error_output; //Returns any error occured during Pa_StartStream, if there was no error the function will return paNoError
 } //oscilloscopeLibrary::open_start
 
 PaError oscilloscopeLibrary::stop_close(){ //Stops the playback of an already playing audio stream
-    if(!initialised)return 0; //Prevent the code to run if no audio stream is playing
+    if(!initialised)return paStreamIsStopped; //Prevent the code to run if no audio stream is playing
 
     delete preBufData.left_channel; //Delete the buffer since the program ended and we don't need it anymore.
     delete preBufData.right_channel;
@@ -94,11 +100,12 @@ PaError oscilloscopeLibrary::stop_close(){ //Stops the playback of an already pl
 
     //If no audio stream was playing close the stream anyway (if no stream was created in the first place then it will just return an error)
     error_output = Pa_CloseStream( oscilloscopeLibrary::audio_stream ); //Closing the audio stream
+    if(error_output == paNoError)initialised = false; //If there was no error during the stopping of the stream then set the initialised boean as false
     return error_output; //Returns any error occured during Pa_StartStream, if there was no error the function will return paNoError
 } //oscilloscopeLibrary::stop_close
 
-void oscilloscopeLibrary::updateBuffer(){
-    if(initialised)return; //Prevent this code to run if an audio stream is playing, the buffer shouldn't be edited and resized during audio stream playback
+osclib_err oscilloscopeLibrary::updateBuffer(){
+    if(initialised)return audio_stream_ill_modif; //Prevent this code to run if an audio stream is playing, the buffer shouldn't be edited and resized during audio stream playback
 
     if(!buffer_initialised){ //If the buffer hasn't been defined yet define it, tell the program we defined it and end the function.
         terminal::out::println("creating new pointer with size ", preBufData.buffer_frames);
@@ -108,7 +115,7 @@ void oscilloscopeLibrary::updateBuffer(){
 
         buffer_initialised = true;
 
-        return;
+        return osc_no_err;
     }
 
     terminal::out::println("executing the rest of the stuff");
@@ -139,7 +146,7 @@ void oscilloscopeLibrary::updateBuffer(){
 	//buffer_size_old is the prebuffer's size after the last resizing
 	buffer_size_old = preBufData.buffer_frames;
 
-	return; //end the function
+	return osc_no_err; //end the function
 } //oscilloscopeLibrary::updateBuffer
 
 unsigned int oscilloscopeLibrary::absolute(int input){ //This function is used only in the draw_line
@@ -147,8 +154,8 @@ unsigned int oscilloscopeLibrary::absolute(int input){ //This function is used o
 } //oscilloscopeLibrary::absolute
 
 //Draws a line on the screen
-void oscilloscopeLibrary::draw_line(unsigned int x1, unsigned int y1, unsigned int x2, unsigned int y2){
-    if(initialised)return; //Prevent the buffer to be modified while the audio stream is running
+osclib_err oscilloscopeLibrary::draw_line(unsigned int x1, unsigned int y1, unsigned int x2, unsigned int y2){
+    if(initialised)return audio_stream_ill_modif; //Prevent the buffer to be modified while the audio stream is running
 
 	const bool FALL = false; //Used to define the direction variable
 	const bool RISE = true;  //If the direction goes up then the definition is in RISE, otherwise in FALL
@@ -212,12 +219,12 @@ void oscilloscopeLibrary::draw_line(unsigned int x1, unsigned int y1, unsigned i
 
     buffer_current_position = iterator;
 
-    return;
+    return osc_no_err;
 } //oscilloscopeLibrary::draw_line
 
 //Draws a dot for the screen and keeps the vectorscope on that dot for a certain duration
-void oscilloscopeLibrary::draw_point(unsigned int x, unsigned int y, unsigned short duration){
-    if(initialised)return; //Prevent the buffer to be modified while the audio stream is running
+osclib_err oscilloscopeLibrary::draw_point(unsigned int x, unsigned int y, unsigned short duration){
+    if(initialised)return audio_stream_ill_modif; //Prevent the buffer to be modified while the audio stream is running
 
     preBufData.buffer_frames += duration; //The duration is the amount of time the vectorscope should be staying on the defined coordinates, that defines the brightness of the dot and the speed at which it will be shown during drawing
     oscilloscopeLibrary::updateBuffer();
@@ -232,5 +239,5 @@ void oscilloscopeLibrary::draw_point(unsigned int x, unsigned int y, unsigned sh
         *(preBufData.right_channel + i) = *(preBufData.right_channel + i - 1);
     }
 
-    return;
+    return osc_no_err;
 } //oscilloscopeLibrary::draw_point
