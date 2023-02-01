@@ -166,8 +166,8 @@ void oscilloscopeLibrary::draw_line(unsigned int x1, unsigned int y1, unsigned i
 	float iX = x1; //Iterator for the X coord
 	float iY = y1; //Iterator for the Y coord
 
-	bool directionX = (x2 - x1) >= 0; //The direction in which the channels have to go at (RISE = true, FALL = false)
-	bool directionY = (y2 - y1) >= 0;
+	bool directionX = ((x2 - x1) >= 0); //The direction in which the channels have to go at (RISE = true, FALL = false)
+	bool directionY = ((y2 - y1) >= 0);
 
     terminal::out::println("buffer_frames = ", preBufData.buffer_frames);
     terminal::out::println("buffer_current_position = ", buffer_current_position);
@@ -182,20 +182,20 @@ void oscilloscopeLibrary::draw_line(unsigned int x1, unsigned int y1, unsigned i
 		distanceToY2 = absolute((y2 * 0.01f - 1.00f) - iY);
 
         //Recalculate the distanceRatio every loop
-        //This is the ratio between the distance from the biggest variable to the end and the smallest variable to the end
+        //This is the ratio between the distance from the biggest variable to the end and the smallest variable to the end rounded down
 		distanceRatio = distanceToX2 > distanceToY2 ? (int)(distanceToX2 / distanceToY2) : (int)(distanceToY2 / distanceToX2);
 
         terminal::out::println("distanceToX2 = ", distanceToX2, " - distanceToY2 = ", distanceToY2, " - distanceRatio = ", distanceRatio);
 
 		if(distanceToX2 > distanceToY2){
-			*(preBufData.left_channel + iterator)  = *(preBufData.left_channel + iterator - 1)  + ((directionX==RISE ? 1 : -1) * (distanceRatio / 100.00f));
-			*(preBufData.right_channel + iterator) = *(preBufData.right_channel + iterator - 1) + ((directionY==RISE ? 1 : -1) * 0.01f);
+			*(preBufData.left_channel + iterator)  = *(preBufData.left_channel + iterator - 1)  + ((directionX==RISE ? 1.00f : -1.00f) * (distanceRatio / 100.00f));
+			*(preBufData.right_channel + iterator) = *(preBufData.right_channel + iterator - 1) + ((directionY==RISE ? 1.00f : -1.00f) * 0.01f);
 		} else if(distanceToX2 < distanceToY2){
-			*(preBufData.left_channel + iterator)  = *(preBufData.left_channel + iterator - 1)  + ((directionX==RISE ? 1 : -1) * 0.01f);
-			*(preBufData.right_channel + iterator) = *(preBufData.right_channel + iterator - 1) + ((directionY==RISE ? 1 : -1) * (distanceRatio / 100.00f));
+			*(preBufData.left_channel + iterator)  = *(preBufData.left_channel + iterator - 1)  + ((directionX==RISE ? 1.00f : -1.00f) * 0.01f);
+			*(preBufData.right_channel + iterator) = *(preBufData.right_channel + iterator - 1) + ((directionY==RISE ? 1.00f : -1.00f) * (distanceRatio / 100.00f));
 		} else if(distanceToX2 == distanceToY2){
-			*(preBufData.left_channel + iterator)  = *(preBufData.left_channel + iterator - 1)  + ((directionX==RISE ? 1 : -1) * 0.01f);
-			*(preBufData.right_channel + iterator) = *(preBufData.right_channel + iterator - 1) + ((directionY==RISE ? 1 : -1) * 0.01f);
+			*(preBufData.left_channel + iterator)  = *(preBufData.left_channel + iterator - 1)  + ((directionX==RISE ? 1.00f : -1.00f) * 0.01f);
+			*(preBufData.right_channel + iterator) = *(preBufData.right_channel + iterator - 1) + ((directionY==RISE ? 1.00f : -1.00f) * 0.01f);
 		}
 
         terminal::out::println("writing to buffer in position ", iterator, " - left_channel = ", *(preBufData.left_channel + iterator), " - right_channel = ", *(preBufData.right_channel + iterator));
