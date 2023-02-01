@@ -173,13 +173,13 @@ void oscilloscopeLibrary::draw_line(unsigned int x1, unsigned int y1, unsigned i
     terminal::out::println("buffer_current_position = ", buffer_current_position);
     terminal::out::println("directionX = ", directionX, " - directionY = ", directionY, ENDLINE, ENDLINE);
 
-    *(preBufData.left_channel + 0)  = x1 * 0.01f - 1.00f; //Setting the first value of the buffer to the initial variables, modified to range from a scale of 0 to 200 to a scale of -1.00 to +1.00
-    *(preBufData.right_channel + 0) = y1 * 0.01f - 1.00f; //Not doing this results in the entire buffer being empty since every value of the buffer is dependant on the last one
+    *(preBufData.left_channel + iterator)  = x1 * 0.01f - 1.00f; //Setting the first value of the buffer to the initial variables, modified to range from a scale of 0 to 200 to a scale of -1.00 to +1.00
+    *(preBufData.right_channel + iterator) = y1 * 0.01f - 1.00f; //Not doing this results in the entire buffer being empty since every value of the buffer is dependant on the last one
 
-	while(iX < x2 && iY < y2){
+    do{
         //Recalculate both distances every loop
-		distanceToX2 = absolute(x2 - iX);
-		distanceToY2 = absolute(y2 - iY);
+		distanceToX2 = absolute((x2 * 0.01f - 1.00f) - iX);
+		distanceToY2 = absolute((y2 * 0.01f - 1.00f) - iY);
 
         //Recalculate the distanceRatio every loop
         //This is the ratio between the distance from the biggest variable to the end and the smallest variable to the end
@@ -208,7 +208,7 @@ void oscilloscopeLibrary::draw_line(unsigned int x1, unsigned int y1, unsigned i
         terminal::out::println(ENDLINE);
 
 		iterator++;
-	}
+	} while(distanceToX2 != 0 && distanceToY2 != 0);
 
     buffer_current_position = iterator;
 
@@ -221,6 +221,11 @@ void oscilloscopeLibrary::draw_point(unsigned int x, unsigned int y, unsigned sh
 
     preBufData.buffer_frames += duration; //The duration is the amount of time the vectorscope should be staying on the defined coordinates, that defines the brightness of the dot and the speed at which it will be shown during drawing
     oscilloscopeLibrary::updateBuffer();
+
+    *(preBufData.left_channel + buffer_current_position)  = x * 0.01f - 1.00f; //setting the first value of the buffer to the specified x and y coordinate
+    *(preBufData.right_channel + buffer_current_position) = y * 0.01f - 1.00f; //Not doing this results in the buffer being empty since every value written depends on the last one
+
+    buffer_current_position++; //Incrementing the position of the buffer by one to not override the just filled in values during the loop
 
     for(unsigned short i = buffer_current_position;i < duration + buffer_current_position;i++){
         *(preBufData.left_channel + i)  = *(preBufData.left_channel + i - 1);
