@@ -173,8 +173,8 @@ void oscilloscopeLibrary::draw_line(unsigned int x1, unsigned int y1, unsigned i
     terminal::out::println("buffer_current_position = ", buffer_current_position);
     terminal::out::println("directionX = ", directionX, " - directionY = ", directionY, ENDLINE, ENDLINE);
 
-    *(preBufData.left_channel)  = x1 * 0.01f + 1.0f; //Setting the first value of the buffer to the initial variables
-    *(preBufData.right_channel) = y1 * 0.01f + 1.0f; //Not doing this results in the entire buffer being empty since every value of the buffer is dependant on the last one
+    *(preBufData.left_channel + 0)  = x1 * 0.01f - 1.00f; //Setting the first value of the buffer to the initial variables, modified to range from a scale of 0 to 200 to a scale of -1.00 to +1.00
+    *(preBufData.right_channel + 0) = y1 * 0.01f - 1.00f; //Not doing this results in the entire buffer being empty since every value of the buffer is dependant on the last one
 
 	while(iX < x2 && iY < y2){
         //Recalculate both distances every loop
