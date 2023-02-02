@@ -15,11 +15,11 @@ typedef struct {
 } paData;
 static paData preBufData;
 
-enum osclib_err { //define an enumerator for the errors that can happen during the code
-    osc_no_err = 1;
+enum osclib_err : int { //define an enumerator for the errors that can happen during the code
+    osc_no_err = 1,
 
-    audio_stream_ill_modif = 100;
-}
+    audio_stream_ill_modif = 100
+};
 
 class oscilloscopeLibrary {
     public:
@@ -59,7 +59,7 @@ class oscilloscopeLibrary {
             return 0; //We need to return an int since this function is defined to be an integer in portAudio
         } //oscilloscopeLibrary::paCallBack
 
-         unsigned int absolute(int input);
+        float absolute(float input);
 }; //oscilloscopeLibrary class
 
 PaError oscilloscopeLibrary::open_start(unsigned int sample_rate){ //Initializes portAudio (if not already), opens a new stream with the requested settings and starts the playback
@@ -152,8 +152,8 @@ osclib_err oscilloscopeLibrary::updateBuffer(){
 	return osc_no_err; //end the function
 } //oscilloscopeLibrary::updateBuffer
 
-unsigned int oscilloscopeLibrary::absolute(int input){ //This function is used only in the draw_line
-	return input >= 0 ? input : input *= -1; //Take the input and make it negative if it's not already
+float oscilloscopeLibrary::absolute(float input){ //This function is used only in the draw_line
+	return input >= 0.00f ? input * 1.00f : input *= -1.00f; //Take the input and make it negative if it's not already
 } //oscilloscopeLibrary::absolute
 
 //Draws a line on the screen
@@ -163,8 +163,8 @@ osclib_err oscilloscopeLibrary::draw_line(unsigned int x1, unsigned int y1, unsi
 	const bool FALL = false; //Used to define the direction variable
 	const bool RISE = true;  //If the direction goes up then the definition is in RISE, otherwise in FALL
 
-	unsigned int distanceToX2 = absolute(x2 - x1); //the distance from the current value to the end value
-	unsigned int distanceToY2 = absolute(y2 - y1); //Right now it's set as the distance between the first variable and the second one to calculate how much should the buffer be incremented
+	float distanceToX2 = absolute(x2 - x1); //the distance from the current value to the end value
+	float distanceToY2 = absolute(y2 - y1); //Right now it's set as the distance between the first variable and the second one to calculate how much should the buffer be incremented
 
 	signed int distanceRatio; //the ratio between distanceToX2 and distanceToY2
 
@@ -173,8 +173,8 @@ osclib_err oscilloscopeLibrary::draw_line(unsigned int x1, unsigned int y1, unsi
 	updateBuffer(); //Update the buffer to the calculated size
 
 	unsigned long iterator = buffer_current_position; //Iterator for the cycle that writes to the prebuffer
-	float iX = x1; //Iterator for the X coord
-	float iY = y1; //Iterator for the Y coord
+	float iX = (x1 * 0.01f - 1.00f); //Iterator for the X coord
+	float iY = (y1 * 0.01f - 1.00f); //Iterator for the Y coord
 
 	bool directionX = ((x2 - x1) >= 0); //The direction in which the channels have to go at (RISE = true, FALL = false)
 	bool directionY = ((y2 - y1) >= 0);
@@ -188,8 +188,8 @@ osclib_err oscilloscopeLibrary::draw_line(unsigned int x1, unsigned int y1, unsi
 
     do{
         //Recalculate both distances every loop
-		distanceToX2 = absolute((x2 * 0.01f - 1.00f) - iX);
-		distanceToY2 = absolute((y2 * 0.01f - 1.00f) - iY);
+		distanceToX2 = absolute(x2 - (iX + 1.00f) * 100);
+		distanceToY2 = absolute(y2 - (iY + 1.00f) * 100);
 
         //Recalculate the distanceRatio every loop
         //This is the ratio between the distance from the biggest variable to the end and the smallest variable to the end rounded down
